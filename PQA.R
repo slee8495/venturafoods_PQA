@@ -7,6 +7,21 @@ library(reshape2)
 library(skimr)
 
 
+# Load data base ----
+load("AS400_data_7.15.22.rds")
+load("JDE_shopfloor_7.15.22.rds")
+
+
+######## Saving to the database ####### ----
+# AS400_data <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/raw/as400_database.xlsx")
+# JDE_shopfloor <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/raw/jde_shopfloor.xlsx")
+# 
+# save(AS400_data, file = "AS400_data_7.15.22.rds")
+# save(JDE_shopfloor, file = "JDE_shopfloor_7.15.22.rds")
+
+
+
+
 #################### Reading input ######################
 
 # Platform and Category from MicroStrategy (change the file when there are new items and MS updated) ----
@@ -224,13 +239,16 @@ jde_attain %>%
   dplyr::filter(!(Missed_or_Planned == "P" & Production_Quantity == 0)) -> jde_attain
 
 dplyr::left_join(jde_attain, cat_plat %>% select(-Product), by = "Item") %>% 
-  dplyr::select(-Label, -Date) %>% 
+  dplyr::select(-Label, -Date, -Lot_Code) %>% 
   dplyr::relocate(FY, Year, Month, SKU_PQA, Category, Platform) %>% 
-  dplyr::mutate(Requested_Date = format(as.Date(Requested_Date), "%m/%d/%y"),
-                Modified_Req_Date = format(as.Date(Modified_Req_Date), "%m/%d/%y")) -> jde_attain
+  dplyr::mutate(Requested_Date = format(as.Date(Requested_Date), "%m/%d/%Y"),
+                Modified_Req_Date = format(as.Date(Modified_Req_Date), "%m/%d/%Y")) %>% 
+  dplyr::mutate(Month = recode(Month, "1" = "Jan", "2" = "Feb", "3" = "Mar", "4" = "Apr", "5" = "May", "6" = "Jun",
+                               "7" = "Jul", "8" = "Aug", "9" = "Sep", "10" = "Oct", "11" = "Nov", "12" = "Dec")) -> jde_attain
+
+######## Exporting to Excel ####### ----
+writexl::write_xlsx(as400_data, "as400_data_7.15.22.xlsx")
+writexl::write_xlsx(jde_attain, "jde_7.15.22.xlsx")
 
 
-# Now you have completed two data set (as400_data, jde_attain)
 
-###### You still need to save as400_data original fine into data base for future adding
-###### You still need to save JDE Shopfloor original fine into data base for future adding
