@@ -8,8 +8,9 @@ library(skimr)
 
 
 # Load data base ----
-load("AS400_data_7.15.22.rds")
-load("JDE_shopfloor_7.15.22.rds")
+
+load("C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/AS400_data_7.15.22.rds")
+load("C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/JDE_shopfloor_7.15.22.rds")
 
 
 ######## Saving to the database ####### ----
@@ -202,7 +203,9 @@ as400_pivot %>%
   dplyr::relocate(Location, FY, Year, Month, Week, Physical_Line, Product) %>% 
   dplyr::select(-Date) -> as400_data
 
-dplyr::left_join(as400_data, cat_plat %>% select(-Item), by = "Product") -> as400_data
+dplyr::left_join(as400_data, cat_plat %>% select(-Item), by = "Product") %>% 
+  dplyr::mutate(Month = recode(Month, "1" = "Jan", "2" = "Feb", "3" = "Mar", "4" = "Apr", "5" = "May", "6" = "Jun",
+                               "7" = "Jul", "8" = "Aug", "9" = "Sep", "10" = "Oct", "11" = "Nov", "12" = "Dec")) -> as400_data
 
 
 ################# move to JDE Shopfloor tab
@@ -249,6 +252,29 @@ dplyr::left_join(jde_attain, cat_plat %>% select(-Product), by = "Item") %>%
 ######## Exporting to Excel ####### ----
 writexl::write_xlsx(as400_data, "as400_data_7.15.22.xlsx")
 writexl::write_xlsx(jde_attain, "jde_7.15.22.xlsx")
+
+
+
+###### Save it to the database ##### ----
+names(AS400_data) <- stringr::str_replace_all(names(AS400_data), c(" " = "_"))
+head(AS400_data)
+
+AS400_data %>% 
+  dplyr::filter(!(Month == "Jul" & Year == 2020)) %>%   ## ---- here! change the oldest month
+  dplyr::bind_rows(as400_data) -> AS400_data
+
+save(AS400_data, file = "C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/AS400_data_7.15.22.rds")
+
+
+
+head(JDE_shopfloor)
+JDE_shopfloor %>% 
+  dplyr::filter(!(Month == "Jul" & Year == 2020)) %>%   ## ---- here! change the oldest month
+  dplyr::bind_rows(jde_attain) -> JDE_shopfloor
+
+save(JDE_shopfloor, file = "C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/JDE_shopfloor_7.15.22.rds")
+
+
 
 
 
