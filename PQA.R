@@ -114,7 +114,7 @@ reshape2::dcast(loc25_data, Location + Week + Physical_Line + Product ~ ., value
 cbind(loc_25_pivot_1, loc_25_pivot_2) -> loc_25_pivot
 loc_25_pivot %>% 
   dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_scheduled_qty), 0)) %>% 
-  dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_production_qty), 0)) -> loc_25_pivot 
+  dplyr::mutate(sum_production_qty = replace(sum_production_qty, is.na(sum_production_qty), 0)) -> loc_25_pivot 
 
 # Loc 55
 as400_7499_loc55 %>% 
@@ -142,7 +142,7 @@ reshape2::dcast(loc55_data, Location + Week + Physical_Line + Product ~ ., value
 cbind(loc_55_pivot_1, loc_55_pivot_2) -> loc_55_pivot
 loc_55_pivot %>% 
   dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_scheduled_qty), 0)) %>% 
-  dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_production_qty), 0)) -> loc_55_pivot
+  dplyr::mutate(sum_production_qty = replace(sum_production_qty, is.na(sum_production_qty), 0)) -> loc_55_pivot
 
 # Loc 86
 as400_7499_loc86 %>% 
@@ -170,7 +170,7 @@ reshape2::dcast(loc86_data, Location + Week + Physical_Line + Product ~ ., value
 cbind(loc_86_pivot_1, loc_86_pivot_2) -> loc_86_pivot
 loc_86_pivot %>% 
   dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_scheduled_qty), 0)) %>% 
-  dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_production_qty), 0)) -> loc_86_pivot 
+  dplyr::mutate(sum_production_qty = replace(sum_production_qty, is.na(sum_production_qty), 0)) -> loc_86_pivot 
 
 
 # combine 3 pivots 
