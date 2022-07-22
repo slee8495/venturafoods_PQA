@@ -87,15 +87,15 @@ as400_7499_loc86 <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura W
                                sheet = "loc86 raw")
 
 
-as400_7499_loc25[-1:-7, ] -> as400_7499_loc25
+as400_7499_loc25[c(-1:-7, -nrow(as400_7499_loc25)), ] -> as400_7499_loc25
 colnames(as400_7499_loc25) <- as400_7499_loc25[1, ]
 as400_7499_loc25[-1, ] -> as400_7499_loc25
 
-as400_7499_loc55[-1:-7, ] -> as400_7499_loc55
+as400_7499_loc55[c(-1:-7, -nrow(as400_7499_loc55)), ] -> as400_7499_loc55
 colnames(as400_7499_loc55) <- as400_7499_loc55[1, ]
 as400_7499_loc55[-1, ] -> as400_7499_loc55
 
-as400_7499_loc86[-1:-7, ] -> as400_7499_loc86
+as400_7499_loc86[c(-1:-7, -nrow(as400_7499_loc86)), ] -> as400_7499_loc86
 colnames(as400_7499_loc86) <- as400_7499_loc86[1, ]
 as400_7499_loc86[-1, ] -> as400_7499_loc86
 
@@ -119,15 +119,24 @@ loc25_data %>%
   dplyr::relocate(Week, .before = Date) %>% 
   dplyr::select(-Totals) %>% 
   dplyr::mutate(Location = 25) %>% 
-  dplyr::relocate(Location) -> loc25_data
+  dplyr::relocate(Location) %>% 
+  dplyr::mutate(Scheduled_Qty = replace(Scheduled_Qty, is.na(Scheduled_Qty), 0)) %>% 
+  dplyr::mutate(Scheduled_Pounds = replace(Scheduled_Pounds, is.na(Scheduled_Pounds), 0)) %>% 
+  dplyr::mutate(Production_Qty = replace(Production_Qty, is.na(Production_Qty), 0)) %>% 
+  dplyr::mutate(Production_Pounds = replace(Production_Pounds, is.na(Production_Pounds), 0)) -> loc25_data
+
+
 
 reshape2::dcast(loc25_data, Location + Week + Physical_Line + Product ~ ., value.var = "Scheduled_Qty", sum) %>% 
   dplyr::rename(sum_scheduled_qty = ".") -> loc_25_pivot_1
+
+
 reshape2::dcast(loc25_data, Location + Week + Physical_Line + Product ~ ., value.var = "Production_Qty", sum) %>% 
   dplyr::rename(sum_production_qty = ".") %>% 
   dplyr::select(sum_production_qty) -> loc_25_pivot_2
 
 cbind(loc_25_pivot_1, loc_25_pivot_2) -> loc_25_pivot
+
 loc_25_pivot %>% 
   dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_scheduled_qty), 0)) %>% 
   dplyr::mutate(sum_production_qty = replace(sum_production_qty, is.na(sum_production_qty), 0)) -> loc_25_pivot 
@@ -147,7 +156,11 @@ loc55_data %>%
   dplyr::relocate(Week, .before = Date) %>% 
   dplyr::select(-Totals) %>% 
   dplyr::mutate(Location = 55) %>% 
-  dplyr::relocate(Location) -> loc55_data
+  dplyr::relocate(Location) %>% 
+  dplyr::mutate(Scheduled_Qty = replace(Scheduled_Qty, is.na(Scheduled_Qty), 0)) %>% 
+  dplyr::mutate(Scheduled_Pounds = replace(Scheduled_Pounds, is.na(Scheduled_Pounds), 0)) %>% 
+  dplyr::mutate(Production_Qty = replace(Production_Qty, is.na(Production_Qty), 0)) %>% 
+  dplyr::mutate(Production_Pounds = replace(Production_Pounds, is.na(Production_Pounds), 0)) -> loc55_data
 
 reshape2::dcast(loc55_data, Location + Week + Physical_Line + Product ~ ., value.var = "Scheduled_Qty", sum) %>% 
   dplyr::rename(sum_scheduled_qty = ".") -> loc_55_pivot_1
@@ -159,6 +172,7 @@ cbind(loc_55_pivot_1, loc_55_pivot_2) -> loc_55_pivot
 loc_55_pivot %>% 
   dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_scheduled_qty), 0)) %>% 
   dplyr::mutate(sum_production_qty = replace(sum_production_qty, is.na(sum_production_qty), 0)) -> loc_55_pivot
+
 
 # Loc 86
 as400_7499_loc86 %>% 
@@ -175,7 +189,11 @@ loc86_data %>%
   dplyr::relocate(Week, .before = Date) %>% 
   dplyr::select(-Totals) %>% 
   dplyr::mutate(Location = 86) %>% 
-  dplyr::relocate(Location) -> loc86_data
+  dplyr::relocate(Location) %>% 
+  dplyr::mutate(Scheduled_Qty = replace(Scheduled_Qty, is.na(Scheduled_Qty), 0)) %>% 
+  dplyr::mutate(Scheduled_Pounds = replace(Scheduled_Pounds, is.na(Scheduled_Pounds), 0)) %>% 
+  dplyr::mutate(Production_Qty = replace(Production_Qty, is.na(Production_Qty), 0)) %>% 
+  dplyr::mutate(Production_Pounds = replace(Production_Pounds, is.na(Production_Pounds), 0)) -> loc86_data
 
 reshape2::dcast(loc86_data, Location + Week + Physical_Line + Product ~ ., value.var = "Scheduled_Qty", sum) %>% 
   dplyr::rename(sum_scheduled_qty = ".") -> loc_86_pivot_1
@@ -187,6 +205,7 @@ cbind(loc_86_pivot_1, loc_86_pivot_2) -> loc_86_pivot
 loc_86_pivot %>% 
   dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_scheduled_qty), 0)) %>% 
   dplyr::mutate(sum_production_qty = replace(sum_production_qty, is.na(sum_production_qty), 0)) -> loc_86_pivot 
+
 
 
 # combine 3 pivots 
@@ -206,6 +225,23 @@ as400_pivot %>%
 dplyr::left_join(as400_data, cat_plat %>% select(-Item), by = "Product") %>% 
   dplyr::mutate(Month = recode(Month, "1" = "Jan", "2" = "Feb", "3" = "Mar", "4" = "Apr", "5" = "May", "6" = "Jun",
                                "7" = "Jul", "8" = "Aug", "9" = "Sep", "10" = "Oct", "11" = "Nov", "12" = "Dec")) -> as400_data
+
+
+# filtering work
+as400_data$Product -> temp_product
+Label_as400 <- data.frame(substr(temp_product, nchar(temp_product)-2, nchar(temp_product)))
+
+cbind(as400_data, Label_as400) -> as400_data
+colnames(as400_data)[ncol(as400_data)] <- "Label"
+
+as400_data %>% 
+  dplyr::filter(Label != "BKO") %>% 
+  dplyr::filter(Label != "TST") %>% 
+  dplyr::filter(Product != "15498VEN") %>% 
+  dplyr::filter(Product != "22079VEN") %>% 
+  dplyr::select(-Label) -> as400_data
+
+
 
 
 ################# move to JDE Shopfloor tab
@@ -234,8 +270,8 @@ colnames(jde_attain)[ncol(jde_attain)] <- "Label"
 jde_attain %>% 
   dplyr::filter(Label != "BKO") %>% 
   dplyr::filter(Label != "TST") %>% 
-  dplyr::filter(Label != "15498VEN") %>% 
-  dplyr::filter(Label != "22079VEN") -> jde_attain
+  dplyr::filter(Item != "15498VEN") %>% 
+  dplyr::filter(Item != "22079VEN") -> jde_attain
 
 
 jde_attain %>% 
@@ -260,7 +296,7 @@ names(AS400_data) <- stringr::str_replace_all(names(AS400_data), c(" " = "_"))
 head(AS400_data)
 
 AS400_data %>% 
-  dplyr::filter(!(Month == "Jul" & Year == 2020)) %>%   ## ---- here! change the oldest month
+  dplyr::filter(!(Month == "Jul" & Year == 2020)) %>%   ## ---- here! change the oldest month ----
   dplyr::bind_rows(as400_data) -> AS400_data
 
 save(AS400_data, file = "C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/AS400_data_7.15.22.rds")
@@ -269,7 +305,8 @@ save(AS400_data, file = "C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Pro
 
 head(JDE_shopfloor)
 JDE_shopfloor %>% 
-  dplyr::filter(!(Month == "Jul" & Year == 2020)) %>%   ## ---- here! change the oldest month
+  dplyr::filter(!(Month == "Jul" & Year == 2020)) %>%   ## ---- here! change the oldest month ----
+  dplyr::mutate(Year = as.numeric(Year)) %>% 
   dplyr::bind_rows(jde_attain) -> JDE_shopfloor
 
 save(JDE_shopfloor, file = "C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/JDE_shopfloor_7.15.22.rds")
