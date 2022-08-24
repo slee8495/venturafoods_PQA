@@ -5,12 +5,23 @@ library(readxl)
 library(writexl)
 library(reshape2)
 library(skimr)
+library(lubridate)
+
+
+######### Important (Do this once a year) Week Calculation ############
+first_day_of_the_year <- as.Date("2022-01-01")
+first_monday_of_the_year <- as.Date("2022-01-03")
+
+
+week_cal <- first_monday_of_the_year - first_day_of_the_year
+week_cal %>% 
+  as.numeric() -> week_cal
 
 
 # Load data base ----
 
-load("C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/AS400_data_7.15.22.rds")
-load("C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/JDE_shopfloor_7.15.22.rds")
+# load("C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/AS400_data_7.15.22.rds")
+# load("C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafoods_PQA/rds/JDE_shopfloor_7.15.22.rds")
 
 
 ######## Saving to the database ####### ----
@@ -22,35 +33,78 @@ load("C:/Users/slee/OneDrive - Ventura Foods/Stan/R Codes/Projects/PQA/venturafo
 
 
 
-
 #################### Reading input ######################
 
-# Platform and Category from MicroStrategy (change the file when there are new items and MS updated) ----
-cat_plat <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/Safety Stock Compliance/Automation/raw/Category and Platform and pack size.xlsx")
+# Planner Manager reference ----
+planner_manager <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/automation/Planner-Manager Reference.xlsx")
+planner_manager %>% 
+  janitor::clean_names() %>% 
+  readr::type_convert() %>% 
+  dplyr::rename(Planner = planner) %>% 
+  dplyr::select(Planner, manager_name) -> planner_manager
 
-cat_plat[-1:-2, ] -> cat_plat
+
+
+# Address Book ----
+address_book <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/automation/Address Book - 08.23.22.xlsx")
+
+address_book %>% 
+  janitor::clean_names() %>% 
+  dplyr::rename(Planner = address_number,
+                Planner_name = alpha_name) %>% 
+  dplyr::select(1:2) -> address_book
+
+# exception report ----
+exception_report <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/automation/exception report 08.23.22.xlsx")
+
+exception_report[-1:-2, ] -> exception_report
+colnames(exception_report) <- exception_report[1, ]
+exception_report[-1, ] -> exception_report
+
+exception_report %>% 
+  janitor::clean_names() %>% 
+  readr::type_convert() %>% 
+  dplyr::rename(Location = b_p, 
+                Product = item_number,
+                Planner = planner) %>% 
+  dplyr::select(Location, Product, Planner) %>% 
+  dplyr::mutate(ref = paste0(Location, "_", Product),
+                Planner = replace(Planner, is.na(Planner), 0)) %>% 
+  dplyr::select(ref, Planner) -> exception_report
+
+# Macro-platform from S:drive/Rstudio ----
+macro_platform <- read_excel("S:/Supply Chain Projects/RStudio/Macro-platform.xlsx")
+
+macro_platform %>% 
+  dplyr::rename(macro_platform = "Macro-Platform") -> macro_platform
+
+
+
+
+# Platform and Category from MicroStrategy (change the file when there are new items and MS updated) ----
+
+cat_plat <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/automation/BI Category and Platform and pack size.xlsx")
+cat_plat[-1, ] -> cat_plat
 colnames(cat_plat) <- cat_plat[1, ]
 cat_plat[-1, ] -> cat_plat
 
 cat_plat %>% 
-  dplyr::select(1,2,8,9) -> cat_plat
-
-
-colnames(cat_plat)[1] <- "Location"
-colnames(cat_plat)[2] <- "Item"
-colnames(cat_plat)[3] <- "Category"
-colnames(cat_plat)[4] <- "Platform"
-
-cat_plat %>% 
+  janitor::clean_names() %>% 
+  readr::type_convert() %>% 
+  dplyr::rename(Item = sku_code,
+                Category = product_category_name,
+                Platform = product_platform_description) %>% 
+  dplyr::select(Item, Category, Platform) %>% 
   dplyr::mutate(Item = gsub("-", "", Item),
-                Product = Item) %>% 
-  dplyr::select(-Location) -> cat_plat
+                Product = Item) -> cat_plat
 
-cat_plat[-which(duplicated(cat_plat$Item)),] -> cat_plat
+cat_plat[!duplicated(cat_plat[,c("Item")]),] -> cat_plat
+
+
 
 
 # JDE schedule attainment ----
-jde_attain <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/raw/JDE schedule attainment - June 2022.xlsx",
+jde_attain <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/automation/JDE schedule attainment - July 2022.xlsx",
                          sheet = "Sheet1")
 
 jde_attain[-1:-2, ] -> jde_attain
@@ -77,13 +131,13 @@ jde_attain %>%
 readr::type_convert(jde_attain) -> jde_attain
 
 # AS400 - 7499 ----
-as400_7499_loc25 <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/raw/AS400 schedule attainment - June 2022.xlsx",
+as400_7499_loc25 <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/automation/AS400 schedule attainment - July 2022.xlsx",
                          sheet = "loc25 raw")
 
-as400_7499_loc55 <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/raw/AS400 schedule attainment - June 2022.xlsx",
+as400_7499_loc55 <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/automation/AS400 schedule attainment - July 2022.xlsx",
                                sheet = "loc55 raw")
 
-as400_7499_loc86 <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/raw/AS400 schedule attainment - June 2022.xlsx",
+as400_7499_loc86 <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/automation/AS400 schedule attainment - July 2022.xlsx",
                                sheet = "loc86 raw")
 
 
@@ -113,9 +167,11 @@ as400_7499_loc25 %>%
   dplyr::select(-length_item)-> loc25_data
 
 readr::type_convert(loc25_data) -> loc25_data
+
 loc25_data %>% 
-  dplyr::mutate(Date = lubridate::as_date(Date, format = "%m/%d/%y")) %>% 
-  dplyr::mutate(Week = lubridate::week(Date)) %>% 
+  dplyr::mutate(Date = lubridate::as_date(Date, format = "%m/%d/%y"),
+                weekday = weekdays(Date)) %>% 
+  dplyr::mutate(Week = as.integer(format(Date, "%U")) + 1) %>% 
   dplyr::relocate(Week, .before = Date) %>% 
   dplyr::select(-Totals) %>% 
   dplyr::mutate(Location = 25) %>% 
@@ -124,7 +180,6 @@ loc25_data %>%
   dplyr::mutate(Scheduled_Pounds = replace(Scheduled_Pounds, is.na(Scheduled_Pounds), 0)) %>% 
   dplyr::mutate(Production_Qty = replace(Production_Qty, is.na(Production_Qty), 0)) %>% 
   dplyr::mutate(Production_Pounds = replace(Production_Pounds, is.na(Production_Pounds), 0)) -> loc25_data
-
 
 
 reshape2::dcast(loc25_data, Location + Week + Physical_Line + Product ~ ., value.var = "Scheduled_Qty", sum) %>% 
@@ -150,9 +205,11 @@ as400_7499_loc55 %>%
   dplyr::select(-length_item)-> loc55_data
 
 readr::type_convert(loc55_data) -> loc55_data
+
 loc55_data %>% 
-  dplyr::mutate(Date = lubridate::as_date(Date, format = "%m/%d/%y")) %>% 
-  dplyr::mutate(Week = lubridate::week(Date)) %>% 
+  dplyr::mutate(Date = lubridate::as_date(Date, format = "%m/%d/%y"),
+                weekday = weekdays(Date)) %>% 
+  dplyr::mutate(Week = as.integer(format(Date, "%U")) + 1) %>% 
   dplyr::relocate(Week, .before = Date) %>% 
   dplyr::select(-Totals) %>% 
   dplyr::mutate(Location = 55) %>% 
@@ -183,9 +240,11 @@ as400_7499_loc86 %>%
   dplyr::select(-length_item)-> loc86_data
 
 readr::type_convert(loc86_data) -> loc86_data
+
+
 loc86_data %>% 
-  dplyr::mutate(Date = lubridate::as_date(Date, format = "%m/%d/%y")) %>% 
-  dplyr::mutate(Week = lubridate::week(Date)) %>% 
+  dplyr::mutate(Date = lubridate::as_date(Date, format = "%m/%d/%y")) %>%
+  dplyr::mutate(Week = as.integer(format(Date, "%U")) + 1) %>% 
   dplyr::relocate(Week, .before = Date) %>% 
   dplyr::select(-Totals) %>% 
   dplyr::mutate(Location = 86) %>% 
@@ -205,6 +264,9 @@ cbind(loc_86_pivot_1, loc_86_pivot_2) -> loc_86_pivot
 loc_86_pivot %>% 
   dplyr::mutate(sum_scheduled_qty = replace(sum_scheduled_qty, is.na(sum_scheduled_qty), 0)) %>% 
   dplyr::mutate(sum_production_qty = replace(sum_production_qty, is.na(sum_production_qty), 0)) -> loc_86_pivot 
+
+
+
 
 
 
@@ -236,11 +298,11 @@ colnames(as400_data)[ncol(as400_data)] <- "Label"
 
 as400_data %>% 
   dplyr::filter(Label != "BKO") %>% 
+  dplyr::filter(Label != "BKM") %>% 
   dplyr::filter(Label != "TST") %>% 
   dplyr::filter(Product != "15498VEN") %>% 
   dplyr::filter(Product != "22079VEN") %>% 
   dplyr::select(-Label) -> as400_data
-
 
 
 
@@ -269,6 +331,7 @@ colnames(jde_attain)[ncol(jde_attain)] <- "Label"
 
 jde_attain %>% 
   dplyr::filter(Label != "BKO") %>% 
+  dplyr::filter(Label != "BKM") %>% 
   dplyr::filter(Label != "TST") %>% 
   dplyr::filter(Item != "15498VEN") %>% 
   dplyr::filter(Item != "22079VEN") -> jde_attain
@@ -284,6 +347,74 @@ dplyr::left_join(jde_attain, cat_plat %>% select(-Product), by = "Item") %>%
                 Modified_Req_Date = format(as.Date(Modified_Req_Date), "%m/%d/%Y")) %>% 
   dplyr::mutate(Month = recode(Month, "1" = "Jan", "2" = "Feb", "3" = "Mar", "4" = "Apr", "5" = "May", "6" = "Jun",
                                "7" = "Jul", "8" = "Aug", "9" = "Sep", "10" = "Oct", "11" = "Nov", "12" = "Dec")) -> jde_attain
+
+
+
+# Final touch to make all_locations
+
+jde_attain %>% 
+  dplyr::select(Branch_Plant, FY, Year, Month, Line, Item, Scheduled_Quantity, Production_Quantity, SKU_PQA, Category, Platform) %>% 
+  dplyr::rename(Location = Branch_Plant,
+                Physical_Line = Line,
+                Product = Item,
+                sum_scheduled_qty = Scheduled_Quantity,
+                sum_production_qty = Production_Quantity) %>% 
+  dplyr::mutate(Week = "") %>% 
+  dplyr::relocate(FY, Year, Month, Location, Week, Physical_Line, Product, sum_scheduled_qty, sum_production_qty, SKU_PQA, Category, Platform) -> jde_attain
+
+
+as400_data %>% 
+  dplyr::relocate(FY, Year, Month, Location, Week, Physical_Line, Product, sum_scheduled_qty, sum_production_qty, SKU_PQA, Category, Platform) -> as400_data
+
+
+rbind(jde_attain, as400_data) -> all_locations
+
+
+
+# Vlookup - Macro Platform
+all_locations %>% 
+  dplyr::left_join(macro_platform, by = "Platform") -> all_locations
+
+
+# Planner
+all_locations %>% 
+  dplyr::mutate(ref = paste0(Location, "_", Product)) %>% 
+  dplyr::left_join(exception_report, by = "ref") -> all_locations
+
+
+# Planner Name 
+all_locations %>% 
+  dplyr::left_join(address_book, by = "Planner") -> all_locations
+
+
+# Manager Name
+planner_manager[!duplicated(planner_manager[,c("Planner")]),] -> planner_manager
+
+all_locations %>% 
+  dplyr::left_join(planner_manager, by = "Planner") -> all_locations
+
+
+# testing begin
+
+all_locations
+
+testing_file <- read_excel("C:/Users/slee/OneDrive - Ventura Foods/Ventura Work/SCE/Project/FY 23/PQA/automation/Production Quantity Attainment rolling 24 months - Aug 2020 - Jul 2022.xlsx",
+                           sheet = "All locations")
+
+
+testing_file[-1:-3, ] -> testing_file
+colnames(testing_file) <- testing_file[1, ]
+testing_file[-1, ] -> testing_file
+
+testing_file %>% 
+  dplyr::filter(Year == "2022" & Month == "Jul") -> a
+
+
+
+
+# testing end
+
+###################################################################################################################################
 
 ######## Exporting to Excel ####### ----
 writexl::write_xlsx(as400_data, "as400_data_7.15.22.xlsx")
