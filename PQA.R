@@ -409,8 +409,37 @@ testing_file[-1, ] -> testing_file
 testing_file %>% 
   dplyr::filter(Year == "2022" & Month == "Jul") -> a
 
+str(a)
+str(all_locations)
+
+a %>% readr::type_convert() -> a
+
+str(a)
+str(all_locations)
+
+sum(a$`Scheduled Qty`)
+sum(all_locations$sum_scheduled_qty)
 
 
+
+sum(a$`Production Qty`)
+sum(all_locations$sum_production_qty)
+
+
+a %>% 
+  janitor::clean_names() %>% 
+  dplyr::mutate(dummy_ref = paste0(loc, "_", product, "_", scheduled_qty, "-", production_qty)) %>% 
+  dplyr::relocate(dummy_ref) %>% 
+  dplyr::select(dummy_ref) -> a_2
+
+
+all_locations %>% 
+  dplyr::mutate(dummy_ref = paste0(Location, "_", Product, "_", sum_scheduled_qty, "_", sum_production_qty)) %>% 
+  dplyr::relocate(dummy_ref) %>% 
+  dplyr::select(dummy_ref) -> all_locations_2
+
+
+dplyr::setdiff(a_2, all_locations_2)
 
 # testing end
 
