@@ -8,14 +8,6 @@ library(skimr)
 library(lubridate)
 
 
-######### Important (Do this once a year) Week Calculation ############
-first_day_of_the_year <- as.Date("2022-01-01")
-first_monday_of_the_year <- as.Date("2022-01-03")
-
-
-week_cal <- first_monday_of_the_year - first_day_of_the_year
-week_cal %>% 
-  as.numeric() -> week_cal
 
 
 # Load data base ----
